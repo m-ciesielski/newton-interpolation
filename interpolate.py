@@ -1,9 +1,5 @@
-import plotly.plotly as py
 import sympy as sy
 import argparse
-import numexpr as ne
-import ast
-# from plotly.graph_objs import Scatter
 from matplotlib import pyplot as plt
 from numpy import *
 
