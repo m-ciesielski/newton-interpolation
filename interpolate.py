@@ -1,10 +1,13 @@
 import sympy as sy
 import argparse
 from matplotlib import pyplot as plt
-from numpy import *
+import numpy
 
 
-class Node(object):
+class DividedDifferenceNode(object):
+    """
+    Represents node in divided differences tree.
+    """
     divided_difference = None
     x = None
     left_parent = None
@@ -21,7 +24,7 @@ class Node(object):
 
     def calculate_value(self):
         self.divided_difference = ((self.right_parent.divided_difference - self.left_parent.divided_difference) / (
-        self.get_right_x() - self.get_left_x()))
+            self.get_right_x() - self.get_left_x()))
 
     def get_left_x(self):
         if self.x is not None:
@@ -37,7 +40,7 @@ class Node(object):
 
     @staticmethod
     def create_child_node(left_parent, right_parent):
-        return Node(left_parent=left_parent, right_parent=right_parent)
+        return DividedDifferenceNode(left_parent=left_parent, right_parent=right_parent)
 
 
 def calculate_initial_nodes(x_start, x_end, nodes_y):
@@ -58,12 +61,18 @@ def calculate_initial_nodes(x_start, x_end, nodes_y):
 
 
 def calculate_divided_differences_row(nodes_to_compute):
+    """
+    Takes list of divided differences nodes and calculates new divided differences node from each pair of nodes_to_compute.
+    In other words, it computes next level of so called Newton's second interpolation form tree.
+    :rtype : list of calculated divided differences
+    """
     divided_differences = []
 
+    if len(nodes_to_compute) == 1:
+        return None
+
     for i in range(0, len(nodes_to_compute) - 1):
-        if len(nodes_to_compute) == 1:
-            return None
-        child = Node.create_child_node(nodes_to_compute[i], nodes_to_compute[i + 1])
+        child = DividedDifferenceNode.create_child_node(nodes_to_compute[i], nodes_to_compute[i + 1])
         child.calculate_value()
         divided_differences.append(child)
 
@@ -75,10 +84,16 @@ def calculate_divided_differences_row(nodes_to_compute):
 
 
 def calculate_divided_differences(nodes):
+    """
+    Calculates divided differences for given interpolation nodes.
+    It is assumed, that at least two interpolation nodes are provided.
+    Each tuple of returned list represents one level of divided differences tree.
+    :rtype : list of tuples of divided differences
+    """
     nodes_to_compute = []
     divided_differences = []
     for node in nodes:
-        nodes_to_compute.append(Node(x=node[0], divided_difference=node[1]))
+        nodes_to_compute.append(DividedDifferenceNode(x=node[0], divided_difference=node[1]))
 
     divided_differences.append(tuple(nodes_to_compute))
 
@@ -91,6 +106,11 @@ def calculate_divided_differences(nodes):
 
 
 def calculate_newton_interpolation(divided_differences):
+    """
+    Creates polynomial from given list of divided differences. Polynomial string is created according to equation
+    provided in project docs.
+    :rtype : String representing calculated polynomial
+    """
     polynomial = []
     for i, divided_differences_row in enumerate(divided_differences):
         polynomial_part = '({0})'.format(divided_differences_row[0].divided_difference)
@@ -98,32 +118,33 @@ def calculate_newton_interpolation(divided_differences):
             polynomial_part += '*(x-{0})'.format(divided_differences[0][j].x)
 
         polynomial_part += '+'
-
         polynomial.append(polynomial_part)
-
     polynomial_str = ''.join(polynomial)[:-1]
 
     print('Calculated polynomial: {0}'.format(polynomial_str))
+    # Heuristic simplification of calculated polynomial
     simplified_polynomial = sy.simplify(polynomial_str)
     print("Simplified polynomial: {0}".format(simplified_polynomial))
     return simplified_polynomial
 
 
 def draw_interpolation_plot(interpolation_polynomial=None, initial_nodes=None, start_x=0, end_x=15, freq=200):
-    plt.figure(figsize=(8, 6), dpi=80)
-    x = linspace(start_x, end_x, freq)
-    # eval should be changed to something more secure (like numexpr evaluate())...
-    y = eval(str(interpolation_polynomial))
-    if initial_nodes:
-        initial_x = []
-        initial_y = []
-        for node in initial_nodes:
-            initial_x.append(node[0])
-            initial_y.append(node[1])
+    """
+    Draws interpolation plot for given interpolation polynomial and nodes.
+    """
 
-        plt.plot(x, y, initial_x, initial_y, 'ro')
-    else:
-        plt.plot(x, y)
+    # TODO: calculate figure size dynamically
+    plt.figure(figsize=(8, 6), dpi=80)
+    x = numpy.linspace(start_x, end_x, freq)
+    # TODO: eval should be changed to something more secure (like numexpr evaluate())...
+    y = eval(str(interpolation_polynomial))
+    initial_x = []
+    initial_y = []
+    for node in initial_nodes:
+        initial_x.append(node[0])
+        initial_y.append(node[1])
+
+    plt.plot(x, y, initial_x, initial_y, 'ro')
 
     plt.grid(True)
     plt.show()
@@ -142,9 +163,7 @@ def calculate_and_draw_newton_interpolation(args=None, nodes=None):
 
 
 def add_new_node_to_interpolation(polynomial, node):
-    """
-    TODO: implement addition of node to already calculated polynomial.
-    """
+    # TODO: implement addition of node to already calculated polynomial.
     pass
 
 
