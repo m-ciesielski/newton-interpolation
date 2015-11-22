@@ -43,10 +43,10 @@ class DividedDifferenceNode(object):
         return DividedDifferenceNode(left_parent=left_parent, right_parent=right_parent)
 
 
-def calculate_initial_nodes(x_start, x_end, nodes_y):
+def prepare_initial_nodes(x_start, x_end, nodes_y):
     """
-    Calculates X values for given list of Y values in range defined by a and b parameters. X values are simply calculated
-    by dividing given X range by number of nodes, so they are distributed in even range.
+    Calculates X values for given list of Y values in range defined by a and b parameters. X values are
+     simply calculated by dividing given X range by number of nodes, so they are distributed in even range.
     :param x_start: Start of X values range
     :param x_end: End of X values range
     :param nodes_y: List of Y values
@@ -62,7 +62,8 @@ def calculate_initial_nodes(x_start, x_end, nodes_y):
 
 def calculate_divided_differences_row(nodes_to_compute):
     """
-    Takes list of divided differences nodes and calculates new divided differences node from each pair of nodes_to_compute.
+    Takes list of divided differences nodes and calculates new divided differences node from each pair
+    of nodes_to_compute.
     In other words, it computes next level of so called Newton's second interpolation form tree.
     :rtype : list of calculated divided differences
     """
@@ -150,21 +151,29 @@ def draw_interpolation_plot(interpolation_polynomial=None, initial_nodes=None, s
     plt.show()
 
 
-def calculate_and_draw_newton_interpolation(args=None, nodes=None):
-    if nodes:
-        initial_nodes = calculate_initial_nodes(args.start, args.end, nodes)
-    else:
-        initial_nodes = calculate_initial_nodes(args.start, args.end, args.nodes)
+def add_new_node_to_interpolation(polynomial, nodes):
+    new_node = nodes[-1]
+    # Calculate multiplier
+    # TODO: change eval to numexpr evaluate()
+    nominator = (new_node[1] - eval(str(polynomial).replace("x", str(new_node[0]))))
+    denominator = 1
+    for node in nodes[:-1]:
+        denominator = denominator * (new_node[0]-node[0])
 
-    divided_differences = calculate_divided_differences(initial_nodes)
-    interpolation_polynomial = calculate_newton_interpolation(divided_differences)
-    draw_interpolation_plot(start_x=args.start, end_x=args.end, interpolation_polynomial=interpolation_polynomial,
-                            initial_nodes=initial_nodes)
+    multiplier = (nominator/denominator)
 
+    # build new polynomial
+    new_interpolation_polynomial = list()
+    new_interpolation_polynomial.append("{0}+{1}".format(str(polynomial), multiplier))
+    for node in nodes[:-1]:
+        new_interpolation_polynomial.append("*(x-{0})".format(node[0]))
 
-def add_new_node_to_interpolation(polynomial, node):
-    # TODO: implement addition of node to already calculated polynomial.
-    pass
+    new_interpolation_polynomial_str = "".join(new_interpolation_polynomial)
+    print("Calculated polynomial: {0}".format(new_interpolation_polynomial_str))
+    new_interpolation_polynomial_str = sy.simplify(new_interpolation_polynomial_str)
+    print("Simplified polynomial: {0}".format(new_interpolation_polynomial_str))
+
+    return new_interpolation_polynomial_str
 
 
 def parseargs():
@@ -178,14 +187,24 @@ def parseargs():
 
 if __name__ == '__main__':
     args = parseargs()
+
+    if args.start >= args.end:
+        print("Range of X values must be greater than 0.")
+    if len(args.nodes) < 1:
+        print("Provide at least two nodes.")
     args.start = int(args.start)
     args.end = int(args.end)
 
-    calculate_and_draw_newton_interpolation(args=args)
+    init_nodes = prepare_initial_nodes(args.start, args.end, args.nodes)
+    divided_diffs = calculate_divided_differences(init_nodes)
+    interpolation_poly = calculate_newton_interpolation(divided_diffs)
+    draw_interpolation_plot(start_x=args.start, end_x=args.end, interpolation_polynomial=interpolation_poly,
+                            initial_nodes=init_nodes)
 
     new_node_y = input("Pass new node Y value:")
-    new_nodes = args.nodes
-    new_nodes.append(new_node_y)
-
-    args.end += 1
-    calculate_and_draw_newton_interpolation(args=args, nodes=new_nodes)
+    new_x_range = args.end + 1
+    new_initial_nodes = init_nodes
+    new_initial_nodes.append((new_x_range, int(new_node_y)))
+    new_polynomial = add_new_node_to_interpolation(interpolation_poly, new_initial_nodes)
+    draw_interpolation_plot(start_x=args.start, end_x=new_x_range, interpolation_polynomial=new_polynomial,
+                            initial_nodes=new_initial_nodes)
