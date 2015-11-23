@@ -133,7 +133,6 @@ def draw_interpolation_plot(interpolation_polynomial=None, initial_nodes=None, s
     """
     Draws interpolation plot for given interpolation polynomial and nodes.
     """
-
     # TODO: calculate figure size dynamically
     plt.figure(figsize=(8, 6), dpi=80)
     x = numpy.linspace(start_x, end_x, freq)
@@ -188,6 +187,9 @@ def parseargs():
         exit(2)
     if len(parsed_args.nodes) <= 1:
         print("Provide at least two nodes.")
+        exit(3)
+    if len(parsed_args.nodes) > ((parsed_args.end-parsed_args.start)+1):
+        print("Count of provided interpolation nodes cannot be greater than provided X range.")
         exit(3)
 
     return parsed_args
