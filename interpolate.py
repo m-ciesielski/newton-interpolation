@@ -65,7 +65,7 @@ def calculate_divided_differences_row(nodes_to_compute):
     Takes list of divided differences nodes and calculates new divided differences node from each pair
     of nodes_to_compute.
     In other words, it computes next level of so called Newton's second interpolation form tree.
-    :rtype : list of calculated divided differences
+    :return : list of calculated divided differences
     """
     divided_differences = []
 
@@ -89,7 +89,7 @@ def calculate_divided_differences(nodes):
     Calculates divided differences for given interpolation nodes.
     It is assumed, that at least two interpolation nodes are provided.
     Each tuple of returned list represents one level of divided differences tree.
-    :rtype : list of tuples of divided differences
+    :return : list of tuples of divided differences
     """
     nodes_to_compute = []
     divided_differences = []
@@ -110,7 +110,7 @@ def calculate_newton_interpolation(divided_differences):
     """
     Creates polynomial from given list of divided differences. Polynomial string is created according to equation
     provided in project docs.
-    :rtype : String representing calculated polynomial
+    :return : String representing calculated polynomial
     """
     polynomial = []
     for i, divided_differences_row in enumerate(divided_differences):
@@ -178,20 +178,24 @@ def add_new_node_to_interpolation(polynomial, nodes):
 
 def parseargs():
     parser = argparse.ArgumentParser(description='Newton\'s Interpolation .')
-    parser.add_argument('--start', required=True, help='Beginning of X values range.')
-    parser.add_argument('--end', required=True, help='End of X values range.')
-    parser.add_argument('-n', required=False, help='Count of nodes.')
-    parser.add_argument('--nodes', required=True, nargs='+', help='Nodes Y values.')
-    return parser.parse_args()
+    parser.add_argument('--start', required=True, type=int, help='Start of X values range.')
+    parser.add_argument('--end', required=True, type=int, help='End of X values range.')
+    parser.add_argument('--nodes', required=True, type=int, nargs='+', help='Y values of interpolation nodes.')
+    parsed_args = parser.parse_args()
+
+    if parsed_args.start >= parsed_args.end:
+        print("Range of X values must be greater than 0.")
+        exit(2)
+    if len(parsed_args.nodes) <= 1:
+        print("Provide at least two nodes.")
+        exit(3)
+
+    return parsed_args
 
 
 if __name__ == '__main__':
     args = parseargs()
 
-    if args.start >= args.end:
-        print("Range of X values must be greater than 0.")
-    if len(args.nodes) < 1:
-        print("Provide at least two nodes.")
     args.start = int(args.start)
     args.end = int(args.end)
 
