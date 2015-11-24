@@ -52,8 +52,8 @@ def prepare_initial_nodes(x_start, x_end, nodes_y):
     :param nodes_y: List of Y values
     :return: List of nodes with X and Y values
     """
-    nodes_x = [int(x_start + ((x_end - x_start) / (len(nodes_y) - 1)) * i) for i in range(0, len(nodes_y))]
-    nodes_y = [int(y) for y in nodes_y]
+    nodes_x = [float(x_start + ((x_end - x_start) / (len(nodes_y) - 1)) * i) for i in range(0, len(nodes_y))]
+    nodes_y = [float(y) for y in nodes_y]
     print(nodes_x)
     print(nodes_y)
     nodes = list(zip(nodes_x, nodes_y))
@@ -115,6 +115,7 @@ def calculate_newton_interpolation(divided_differences):
     polynomial = []
     for i, divided_differences_row in enumerate(divided_differences):
         polynomial_part = '({0})'.format(divided_differences_row[0].divided_difference)
+
         for j in range(0, i):
             polynomial_part += '*(x-{0})'.format(divided_differences[0][j].x)
 
@@ -129,7 +130,8 @@ def calculate_newton_interpolation(divided_differences):
     return simplified_polynomial
 
 
-def draw_interpolation_plot(interpolation_polynomial=None, initial_nodes=None, start_x=0, end_x=15, freq=200):
+def draw_interpolation_plot(start_x, end_x, interpolation_polynomial, nodes, freq=200, additional_polynomial=None,
+                            additional_nodes=None):
     """
     Draws interpolation plot for given interpolation polynomial and nodes.
     """
@@ -138,15 +140,16 @@ def draw_interpolation_plot(interpolation_polynomial=None, initial_nodes=None, s
     x = numpy.linspace(start_x, end_x, freq)
     # TODO: eval should be changed to something more secure (like numexpr evaluate())...
     y = eval(str(interpolation_polynomial))
-    initial_x = []
-    initial_y = []
-    for node in initial_nodes:
-        initial_x.append(node[0])
-        initial_y.append(node[1])
-
-    plt.plot(x, y, initial_x, initial_y, 'ro')
-
+    plt.subplot(211)
+    plt.plot(x, y, [node[0] for node in nodes], [node[1] for node in nodes], 'ro')
     plt.grid(True)
+
+    if additional_polynomial:
+        poly_values = eval(str(additional_polynomial))
+        plt.subplot(212)
+        plt.plot(x, poly_values, [node[0] for node in additional_nodes], [node[1] for node in additional_nodes], 'ro')
+        plt.grid(True)
+
     plt.show()
 
 
@@ -154,7 +157,7 @@ def add_new_node_to_interpolation(polynomial, nodes):
     new_node = nodes[-1]
     # Calculate multiplier
     # TODO: change eval to numexpr evaluate()
-    nominator = (new_node[1] - eval(str(polynomial).replace("x", str(new_node[0]))))
+    nominator = (float(new_node[1]) - eval(str(polynomial).replace("x", str(new_node[0]))))
     denominator = 1
     for node in nodes[:-1]:
         denominator = denominator * (new_node[0]-node[0])
@@ -163,7 +166,7 @@ def add_new_node_to_interpolation(polynomial, nodes):
 
     # build new polynomial
     new_interpolation_polynomial = list()
-    new_interpolation_polynomial.append("{0}+{1}".format(str(polynomial), multiplier))
+    new_interpolation_polynomial.append("{0}+({1})".format(str(polynomial), multiplier))
     for node in nodes[:-1]:
         new_interpolation_polynomial.append("*(x-{0})".format(node[0]))
 
@@ -175,21 +178,58 @@ def add_new_node_to_interpolation(polynomial, nodes):
     return new_interpolation_polynomial_str
 
 
+def parse_user_provided_float(label):
+    val = None
+    while True:
+        try:
+            val = float(input("Type {0}:".format(label)))
+        except ValueError:
+            print("Type correct {0} value.".format(label))
+            continue
+        else:
+            break
+
+    return val
+
+
+def parse_user_provided_float_list(label):
+    val_list = list()
+    while True:
+        try:
+            val_list.append(float(input("Type {0}:".format(label))))
+        except ValueError:
+            response = input("Stop (Y/N)?.".format(label))
+            if response == 'Y':
+                break
+            else:
+                continue
+
+    return val_list
+
+
 def parseargs():
     parser = argparse.ArgumentParser(description='Newton\'s Interpolation .')
-    parser.add_argument('--start', required=True, type=int, help='Start of X values range.')
-    parser.add_argument('--end', required=True, type=int, help='End of X values range.')
-    parser.add_argument('--nodes', required=True, type=int, nargs='+', help='Y values of interpolation nodes.')
+    parser.add_argument('--start', type=float, help='Start of X values range.')
+    parser.add_argument('--end', type=float, help='End of X values range.')
+    parser.add_argument('--nodes-y-values', type=float, nargs='+', help='Y values of interpolation nodes.')
     parsed_args = parser.parse_args()
+
+    if not parsed_args.start:
+        parsed_args.start = parse_user_provided_float("start of X values range")
+
+    if not parsed_args.end:
+        parsed_args.end = parse_user_provided_float("end of X values range")
 
     if parsed_args.start >= parsed_args.end:
         print("Range of X values must be greater than 0.")
         exit(2)
-    if len(parsed_args.nodes) <= 1:
+
+    if not parsed_args.nodes_y_values:
+        print("Enter Y values of interpolation nodes. Type Y to stop.")
+        parsed_args.nodes_y_values = parse_user_provided_float_list("Y value of interpolation node")
+
+    if len(parsed_args.nodes_y_values) < 2:
         print("Provide at least two nodes.")
-        exit(3)
-    if len(parsed_args.nodes) > ((parsed_args.end-parsed_args.start)+1):
-        print("Count of provided interpolation nodes cannot be greater than provided X range.")
         exit(3)
 
     return parsed_args
@@ -201,16 +241,20 @@ if __name__ == '__main__':
     args.start = int(args.start)
     args.end = int(args.end)
 
-    init_nodes = prepare_initial_nodes(args.start, args.end, args.nodes)
+    init_nodes = prepare_initial_nodes(args.start, args.end, args.nodes_y_values)
     divided_diffs = calculate_divided_differences(init_nodes)
     interpolation_poly = calculate_newton_interpolation(divided_diffs)
-    draw_interpolation_plot(start_x=args.start, end_x=args.end, interpolation_polynomial=interpolation_poly,
-                            initial_nodes=init_nodes)
 
-    new_node_y = input("Pass new node Y value:")
-    new_x_range = args.end + 1
-    new_initial_nodes = init_nodes
-    new_initial_nodes.append((new_x_range, int(new_node_y)))
-    new_polynomial = add_new_node_to_interpolation(interpolation_poly, new_initial_nodes)
-    draw_interpolation_plot(start_x=args.start, end_x=new_x_range, interpolation_polynomial=new_polynomial,
-                            initial_nodes=new_initial_nodes)
+    if input("Add new node (Y/N)?") == "Y":
+        new_node_x = parse_user_provided_float("X value of new node")
+        new_node_y = parse_user_provided_float("Y value of new node")
+
+        new_initial_nodes = list(init_nodes)
+        new_initial_nodes.append((float(new_node_x), new_node_y))
+        new_polynomial = add_new_node_to_interpolation(interpolation_poly, new_initial_nodes)
+        draw_interpolation_plot(start_x=args.start, end_x=args.end, interpolation_polynomial=interpolation_poly,
+                                nodes=init_nodes, additional_polynomial=new_polynomial,
+                                additional_nodes=new_initial_nodes)
+    else:
+        draw_interpolation_plot(start_x=args.start, end_x=args.end, interpolation_polynomial=interpolation_poly,
+                                nodes=init_nodes)
